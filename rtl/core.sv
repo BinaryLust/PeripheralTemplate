@@ -103,7 +103,7 @@ module core(
 
 
         // interrupt triggering logic
-        if(!io.counter1[7:0] || !io.counter2[15:0])  io.irq = 1'b1;
+        if(io.counter1[7:0] || io.counter2[15:0])  io.irq = 1'b1;
     end
 
 
