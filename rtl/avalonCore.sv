@@ -44,13 +44,16 @@ module avalonCore(
 
     // internal logic signals
     coreIo cIo();
+    logic  [1:0]  address; // registered address from the previous cycle
 
 
     // register block
     always_ff @(posedge io.clk or posedge io.reset) begin
         if(io.reset) begin
+            address      <= 2'b0;
             io.readValid <= 1'b0;
         end else begin
+            address      <= io.address;
             io.readValid <= io.read;
         end
     end
@@ -67,6 +70,23 @@ module avalonCore(
         cIo.counterStatusRe = 1'b0;
 
 
+        // device register read/write signal generation
+        case(io.address)
+            2'd0: begin
+                      if(io.write) cIo.counterWe       = 1'b1;
+                      if(io.read)  cIo.counterRe       = 1'b1;
+                  end
+            2'd1: begin
+                      if(io.write) cIo.counterConfigWe = 1'b1;
+                      if(io.read)  cIo.counterConfigRe = 1'b1;
+                  end
+            2'd2: begin
+                      if(io.read)  cIo.counterStatusRe = 1'b1;
+                  end
+            default: ; // use already assigned default values
+        endcase
+
+
         // input data bit to device register input bit mapping (for writes)
         cIo.counterIn    = io.dataIn;
         cIo.counterEnIn  = io.dataIn[0];
@@ -74,23 +94,11 @@ module avalonCore(
         cIo.counterIreIn = io.dataIn[2];
 
 
-        // device register output bit to output data bit mapping
-        // we are also doing device register control signal generation
-        case(io.address)
-            2'd0: begin
-                      io.dataOut = cIo.counterOut;
-                      if(io.read)  cIo.counterRe = 1'b1;
-                      if(io.write) cIo.counterWe = 1'b1;
-                  end
-            2'd1: begin
-                      io.dataOut = {29'b0, cIo.counterIreOut, cIo.counterDirOut, cIo.counterEnOut};
-                      if(io.read)  cIo.counterConfigRe = 1'b1;
-                      if(io.write) cIo.counterConfigWe = 1'b1;
-                  end
-            2'd2: begin
-                      io.dataOut = {31'b0, cIo.counterLT1000Out};
-                      if(io.read)  cIo.counterStatusRe = 1'b1;
-                  end
+        // device register output bit to output data bit mapping (for reads)
+        case(address)
+            2'd0: io.dataOut = cIo.counterOut;
+            2'd1: io.dataOut = {29'b0, cIo.counterIreOut, cIo.counterDirOut, cIo.counterEnOut};
+            2'd2: io.dataOut = {31'b0, cIo.counterLT1000Out};
             default: ; // use already assigned default values
         endcase
     end
