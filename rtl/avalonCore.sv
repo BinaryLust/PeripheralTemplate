@@ -5,6 +5,7 @@
 //       0      [31:0]      counter            data       read/write
 //       1      [0]         count enable       config     read/write    (1 for enable, 0 for disable)
 //       1      [1]         count direction    config     read/write    (1 for up,     0 for down)
+//       1      [2]         count int enable   config     read/write    (1 for enable, 0 for disable)
 //       2      [0]         count < 1000       status     read only     (1 for yes,    0 for no)
 
 
@@ -70,6 +71,7 @@ module avalonCore(
         cIo.counterIn    = io.dataIn;
         cIo.counterEnIn  = io.dataIn[0];
         cIo.counterDirIn = io.dataIn[1];
+        cIo.counterIreIn = io.dataIn[2];
 
 
         // device register output bit to output data bit mapping
@@ -81,7 +83,7 @@ module avalonCore(
                       if(io.write) cIo.counterWe = 1'b1;
                   end
             2'd1: begin
-                      io.dataOut = {30'b0, cIo.counterDirOut, cIo.counterEnOut};
+                      io.dataOut = {29'b0, cIo.counterIreOut, cIo.counterDirOut, cIo.counterEnOut};
                       if(io.read)  cIo.counterConfigRe = 1'b1;
                       if(io.write) cIo.counterConfigWe = 1'b1;
                   end

@@ -11,12 +11,14 @@ interface coreIo;
     logic  [31:0]  counterIn;
     logic          counterEnIn;
     logic          counterDirIn;
-    
-    
+    logic          counterIreIn;
+
+
     // device register outputs
     logic  [31:0]  counterOut;
     logic          counterEnOut;
     logic          counterDirOut;
+    logic          counterIreOut;
     logic          counterLT1000Out; // count is less than 1000 status output (read only)
 
 
@@ -39,9 +41,11 @@ interface coreIo;
         input   counterIn,
         input   counterEnIn,
         input   counterDirIn,
+        input   counterIreIn,
         output  counterOut,
         output  counterEnOut,
         output  counterDirOut,
+        output  counterIreOut,
         output  counterLT1000Out,
         input   counterWe,
         input   counterRe,
@@ -61,15 +65,18 @@ module core(
 
 
     // device registers
-    logic  [31:0]  counter;
-    logic          counterEn;
-    logic          counterDir;
-    logic          counterLT1000;
+    logic  [31:0]  counter;       // counter value
+    logic          counterEn;     // counter enable
+    logic          counterDir;    // counter direction
+    logic          counterIre;    // counter interrupt request enable
+    logic          counterLT1000; // counter less than 1000
+
 
     // other internal logic signals
     logic  [31:0]  counterNext;
     logic          counterEnNext;
     logic          counterDirNext;
+    logic          counterIreNext;
     logic          counterLT1000Next;
 
 
@@ -80,12 +87,14 @@ module core(
             counter       <= 32'b0;
             counterEn     <= 1'b0;
             counterDir    <= 1'b0;
+            counterIre    <= 1'b0;
             counterLT1000 <= 1'b0;
         end else begin
             // default conditions
             counter       <= counterNext;
             counterEn     <= counterEnNext;
             counterDir    <= counterDirNext;
+            counterIre    <= counterIreNext;
             counterLT1000 <= counterLT1000Next;
         end
     end
@@ -98,6 +107,7 @@ module core(
         counterNext       = counter;        // retain old count value
         counterEnNext     = counterEn;      // retain old data
         counterDirNext    = counterDir;     // retain old data
+        counterIreNext    = counterIre;     // retain old data
         counterLT1000Next = counterLT1000;  // retail old data
 
 
@@ -118,6 +128,7 @@ module core(
         if(io.counterConfigWe) begin
             counterEnNext  = io.counterEnIn;  // load new config value from bus master
             counterDirNext = io.counterDirIn; // load new config value from bus master
+            counterIreNext = io.counterIreIn; // load new config value from bus master
         end
 
 
@@ -135,6 +146,7 @@ module core(
     assign io.counterOut       = counter;
     assign io.counterEnOut     = counterEn;
     assign io.counterDirOut    = counterDir;
+    assign io.counterIreOut    = counterIre;
     assign io.counterLT1000Out = counterLT1000;
 
 
