@@ -1,12 +1,20 @@
 
 
+// register map
+// address //   bits    //  registers       // type   //  access type  // value meaning
+//       0      [31:0]      counter            data       read/write
+//       1      [0]         count enable       config     read/write    (1 for enable, 0 for disable)
+//       1      [1]         count direction    config     read/write    (1 for up,     0 for down)
+//       2      [0]         count < 1000       status     read only     (1 for yes,    0 for no)
+
+
 // interface definition
 interface avalonIo;
     logic          clk;
     logic          reset;
     logic          read;
     logic          write;
-    logic          address;
+    logic  [1:0]   address;
     logic  [31:0]  dataIn;
     logic          readValid;
     logic  [31:0]  dataOut;
@@ -49,36 +57,47 @@ module avalonCore(
 
     // combinational logic block
     always_comb begin
-        // defaults
-        io.dataOut     = 32'd0;
-        io.irq         = cIo.irq;
-        cIo.clk        = io.clk;
-        cIo.reset      = io.reset;
-        cIo.counter1We = 1'b0;
-        cIo.counter2We = 1'b0;
-        cIo.counter1Re = 1'b0;
-        cIo.counter2Re = 1'b0;
-
-        
-        // input data to device register input bit mapping
-        cIo.counter1In = io.dataIn;
-        cIo.counter2In = io.dataIn;
+        // default logic values
+        io.dataOut          = 32'd0;
+        cIo.counterRe       = 1'b0;
+        cIo.counterWe       = 1'b0;
+        cIo.counterConfigRe = 1'b0;
+        cIo.counterConfigWe = 1'b0;
+        cIo.counterStatusRe = 1'b0;
 
 
-        // device register output bit to output data mapping and control signal generation
+        // input data bit to device register input bit mapping (for writes)
+        cIo.counterIn    = io.dataIn;
+        cIo.counterEnIn  = io.dataIn[0];
+        cIo.counterDirIn = io.dataIn[1];
+
+
+        // device register output bit to output data bit mapping
+        // we are also doing device register control signal generation
         case(io.address)
-            1'd0: begin
-                      io.dataOut = cIo.counter1;
-                      if(io.read)  cIo.counter1Re = 1'b1;
-                      if(io.write) cIo.counter1We = 1'b1;
+            2'd0: begin
+                      io.dataOut = cIo.counterOut;
+                      if(io.read)  cIo.counterRe = 1'b1;
+                      if(io.write) cIo.counterWe = 1'b1;
                   end
-            1'd1: begin
-                      io.dataOut = cIo.counter2;
-                      if(io.read)  cIo.counter2Re = 1'b1;
-                      if(io.write) cIo.counter2We = 1'b1;
+            2'd1: begin
+                      io.dataOut = {30'b0, cIo.counterDirOut, cIo.counterEnOut};
+                      if(io.read)  cIo.counterConfigRe = 1'b1;
+                      if(io.write) cIo.counterConfigWe = 1'b1;
                   end
+            2'd2: begin
+                      io.dataOut = {31'b0, cIo.counterLT1000Out};
+                      if(io.read)  cIo.counterStatusRe = 1'b1;
+                  end
+            default: ; // use already assigned default values
         endcase
     end
+
+
+    // other logic assignments
+    assign cIo.clk   = io.clk;
+    assign cIo.reset = io.reset;
+    assign io.irq    = cIo.counterIrq;
 
 
     // instantiate the core

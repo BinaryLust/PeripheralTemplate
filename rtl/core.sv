@@ -8,50 +8,47 @@ interface coreIo;
     
     
     // device register inputs
-    logic  [31:0]  counter1In;
-    logic  [31:0]  counter2In;
+    logic  [31:0]  counterIn;
+    logic          counterEnIn;
+    logic          counterDirIn;
     
     
-    // device registers (and outputs)
-    logic  [31:0]  counter1;
-    logic  [31:0]  counter2;
+    // device register outputs
+    logic  [31:0]  counterOut;
+    logic          counterEnOut;
+    logic          counterDirOut;
+    logic          counterLT1000Out; // count is less than 1000 status output (read only)
 
 
     // device register control signals
-    logic          counter1We;  // write enable
-    logic          counter2We;  // write eanble
-    logic          counter1Re;  // read enable (only needed in some cases)
-    logic          counter2Re;  // read enable (only needed in some cases)
-    logic          irq;         // interrupt request
+    logic          counterWe;       // counter register write enable
+    logic          counterRe;       // counter register read enable (only needed in some cases)
+    logic          counterConfigWe; // counter config register write enable
+    logic          counterConfigRe; // counter config register read enable (only needed in certain cases)
+    logic          counterStatusRe; // counter status register read enable (only needed in certain cases)
+
+
+    // interrupt request lines
+    logic          counterIrq;      // counter interrupt request
 
 
     // modport list (used to define signal direction for specific situations)
     modport in (
         input   clk,
         input   reset,
-        input   counter1In,
-        input   counter2In,
-        output  counter1,
-        output  counter2,
-        input   counter1We,
-        input   counter2We,
-        input   counter1Re,
-        input   counter2Re,
-        output  irq
-    );
-
-    modport out (
-        output  clk,
-        output  reset,
-        output  counter1In,
-        output  counter2In,
-        input   counter1,
-        input   counter2,
-        output  counter1We,
-        output  counter2We,
-        output  counter1Re,
-        output  counter2Re,
-        input   irq
+        input   counterIn,
+        input   counterEnIn,
+        input   counterDirIn,
+        output  counterOut,
+        output  counterEnOut,
+        output  counterDirOut,
+        output  counterLT1000Out,
+        input   counterWe,
+        input   counterRe,
+        input   counterConfigWe,
+        input   counterConfigRe,
+        input   counterStatusRe,
+        output  counterIrq
     );
 
 endinterface
@@ -63,48 +60,82 @@ module core(
     );
 
 
-    // internal logic signals
-    logic  [31:0]  counter1Next;
-    logic  [31:0]  counter2Next;
+    // device registers
+    logic  [31:0]  counter;
+    logic          counterEn;
+    logic          counterDir;
+    logic          counterLT1000;
+
+    // other internal logic signals
+    logic  [31:0]  counterNext;
+    logic          counterEnNext;
+    logic          counterDirNext;
+    logic          counterLT1000Next;
 
 
     // register block
     always_ff @(posedge io.clk or posedge io.reset) begin
         if(io.reset) begin
             // reset conditions
-            io.counter1 <= 32'b0;
-            io.counter2 <= 32'b0;
+            counter       <= 32'b0;
+            counterEn     <= 1'b0;
+            counterDir    <= 1'b0;
+            counterLT1000 <= 1'b0;
         end else begin
             // default conditions
-            io.counter1 <= counter1Next;
-            io.counter2 <= counter2Next;
+            counter       <= counterNext;
+            counterEn     <= counterEnNext;
+            counterDir    <= counterDirNext;
+            counterLT1000 <= counterLT1000Next;
         end
     end
 
 
     // combinational logic block
     always_comb begin
-        // default conditions
-        io.irq = 1'b0;
+        // default logic values
+        io.counterIrq     = 1'b0;           // do not signal an interrupt
+        counterNext       = counter;        // retain old count value
+        counterEnNext     = counterEn;      // retain old data
+        counterDirNext    = counterDir;     // retain old data
+        counterLT1000Next = counterLT1000;  // retail old data
 
 
-        // counter1 logic
-        if(io.counter1We)
-            counter1Next = io.counter1In;
-        else
-            counter1Next = io.counter1 + 32'b1;
+        // counter logic
+        if(io.counterWe)
+            counterNext = io.counterIn;     // load new count from bus master
+        else begin
+            if(counterEn) begin             // if counting is enabled then
+                if(counterDir)
+                    counterNext = counter + 32'd1; // count up
+                else
+                    counterNext = counter - 32'd1; // count down
+            end
+        end
 
 
-        // counter2 logic
-        if(io.counter2We)
-            counter2Next = io.counter2In;
-        else
-            counter2Next = io.counter2 + 32'b1;
+        // config logic
+        if(io.counterConfigWe) begin
+            counterEnNext  = io.counterEnIn;  // load new config value from bus master
+            counterDirNext = io.counterDirIn; // load new config value from bus master
+        end
+
+
+        // status logic
+        counterLT1000Next = counter < 1000; // set the less than 1000 status flag if the count is less than 1000
 
 
         // interrupt triggering logic
-        if(&io.counter1[7:0] || &io.counter2[15:0])  io.irq = 1'b1;
+        if(&counter[15:0])
+            io.counterIrq = 1'b1;           // generate an interrupt if the lower 16 bits of the counter are set
     end
+
+
+    // assign output values
+    assign io.counterOut       = counter;
+    assign io.counterEnOut     = counterEn;
+    assign io.counterDirOut    = counterDir;
+    assign io.counterLT1000Out = counterLT1000;
 
 
 endmodule
