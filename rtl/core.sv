@@ -23,15 +23,15 @@ interface coreIo;
 
 
     // device register control signals
-    logic          counterWe;       // counter register write enable
-    logic          counterRe;       // counter register read enable (only needed in some cases)
-    logic          counterConfigWe; // counter config register write enable
-    logic          counterConfigRe; // counter config register read enable (only needed in certain cases)
-    logic          counterStatusRe; // counter status register read enable (only needed in certain cases)
+    logic          counterWe;        // counter register write enable
+    logic          counterRe;        // counter register read enable (only needed in some cases)
+    logic          counterConfigWe;  // counter config register write enable
+    logic          counterConfigRe;  // counter config register read enable (only needed in certain cases)
+    logic          counterStatusRe;  // counter status register read enable (only needed in certain cases)
 
 
     // interrupt request lines
-    logic          counterIrq;      // counter interrupt request
+    logic          counterIrq;       // counter interrupt request
 
 
     // modport list (used to define signal direction for specific situations)
@@ -103,19 +103,19 @@ module core(
     // combinational logic block
     always_comb begin
         // default logic values
-        io.counterIrq     = 1'b0;           // do not signal an interrupt
-        counterNext       = counter;        // retain old count value
-        counterEnNext     = counterEn;      // retain old data
-        counterDirNext    = counterDir;     // retain old data
-        counterIreNext    = counterIre;     // retain old data
-        counterLT1000Next = counterLT1000;  // retail old data
+        io.counterIrq     = 1'b0;                  // do not signal an interrupt
+        counterNext       = counter;               // retain old count value
+        counterEnNext     = counterEn;             // retain old data
+        counterDirNext    = counterDir;            // retain old data
+        counterIreNext    = counterIre;            // retain old data
+        counterLT1000Next = counterLT1000;         // retain old data
 
 
         // counter logic
         if(io.counterWe)
-            counterNext = io.counterIn;     // load new count from bus master
+            counterNext = io.counterIn;            // load new count from bus master
         else begin
-            if(counterEn) begin             // if counting is enabled then
+            if(counterEn) begin                    // if counting is enabled then
                 if(counterDir)
                     counterNext = counter + 32'd1; // count up
                 else
@@ -126,19 +126,19 @@ module core(
 
         // config logic
         if(io.counterConfigWe) begin
-            counterEnNext  = io.counterEnIn;  // load new config value from bus master
-            counterDirNext = io.counterDirIn; // load new config value from bus master
-            counterIreNext = io.counterIreIn; // load new config value from bus master
+            counterEnNext  = io.counterEnIn;       // load new config value from bus master
+            counterDirNext = io.counterDirIn;      // load new config value from bus master
+            counterIreNext = io.counterIreIn;      // load new config value from bus master
         end
 
 
         // status logic
-        counterLT1000Next = counter < 1000; // set the less than 1000 status flag if the count is less than 1000
+        counterLT1000Next = counter < 1000;        // set the less than 1000 status flag if the count is less than 1000
 
 
         // interrupt triggering logic
-        if(&counter[15:0])
-            io.counterIrq = 1'b1;           // generate an interrupt if the lower 16 bits of the counter are set
+        if(counterIre && &counter[15:0])           // trigger an interrupt if interrupts are enabled and
+            io.counterIrq = 1'b1;                  // the lower 16 bits of the counter are set
     end
 
 
