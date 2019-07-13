@@ -107,7 +107,7 @@ module avalonCore(
     // other logic assignments
     assign cIo.clk   = io.clk;
     assign cIo.reset = io.reset;
-    assign io.irq    = cIo.counterIrq;
+    assign io.irq    = cIo.counterIrqOut;
 
 
     // instantiate the core

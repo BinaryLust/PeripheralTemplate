@@ -31,7 +31,7 @@ interface coreIo;
 
 
     // interrupt request lines
-    logic          counterIrq;       // counter interrupt request
+    logic          counterIrqOut;    // counter interrupt request output
 
 
     // modport list (used to define signal direction for specific situations)
@@ -52,7 +52,7 @@ interface coreIo;
         input   counterConfigWe,
         input   counterConfigRe,
         input   counterStatusRe,
-        output  counterIrq
+        output  counterIrqOut
     );
 
 endinterface
@@ -72,12 +72,17 @@ module core(
     logic          counterLT1000; // counter less than 1000
 
 
+    // hidden registers
+    logic          counterIrq;    // counter interrupt request
+
+
     // other internal logic signals
     logic  [31:0]  counterNext;
     logic          counterEnNext;
     logic          counterDirNext;
     logic          counterIreNext;
     logic          counterLT1000Next;
+    logic          counterIrqNext;
 
 
     // register block
@@ -89,6 +94,7 @@ module core(
             counterDir    <= 1'b0;
             counterIre    <= 1'b0;
             counterLT1000 <= 1'b0;
+            counterIrq    <= 1'b0;
         end else begin
             // default conditions
             counter       <= counterNext;
@@ -96,6 +102,7 @@ module core(
             counterDir    <= counterDirNext;
             counterIre    <= counterIreNext;
             counterLT1000 <= counterLT1000Next;
+            counterIrq    <= counterIrqNext;
         end
     end
 
@@ -103,7 +110,7 @@ module core(
     // combinational logic block
     always_comb begin
         // default logic values
-        io.counterIrq     = 1'b0;                  // do not signal an interrupt
+        counterIrqNext    = 1'b0;                  // do not signal an interrupt
         counterNext       = counter;               // retain old count value
         counterEnNext     = counterEn;             // retain old data
         counterDirNext    = counterDir;            // retain old data
@@ -138,16 +145,18 @@ module core(
 
         // interrupt triggering logic
         if(counterIre && &counter[15:0])           // trigger an interrupt if interrupts are enabled and
-            io.counterIrq = 1'b1;                  // the lower 16 bits of the counter are set
+            counterIrqNext = 1'b1;                 // the lower 16 bits of the counter are set
+
+
+        // assign output values
+        io.counterOut       = counter;
+        io.counterEnOut     = counterEn;
+        io.counterDirOut    = counterDir;
+        io.counterIreOut    = counterIre;
+        io.counterLT1000Out = counterLT1000;
+        io.counterIrqOut    = counterIrq;
+
     end
-
-
-    // assign output values
-    assign io.counterOut       = counter;
-    assign io.counterEnOut     = counterEn;
-    assign io.counterDirOut    = counterDir;
-    assign io.counterIreOut    = counterIre;
-    assign io.counterLT1000Out = counterLT1000;
 
 
 endmodule
